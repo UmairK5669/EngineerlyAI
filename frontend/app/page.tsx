@@ -1,58 +1,117 @@
 'use client'
 
 import { useState, useEffect, useRef } from "react";
+import Header from "./components/Header";
+import HelpText from "./components/HelpText"; 
 
 const options = ["205", "222", "240", "204", "250"];
 
 const Home = () => {
   const [prompt, setPrompt] = useState("");
   const [filteredOptions, setFilteredOptions] = useState<string[]>([]);
-  const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
-  const [submittedPrompts, setSubmittedPrompts] = useState<string[]>([]);
+  const [chatHistory, setChatHistory] = useState<
+    { user: string; bot: string | null }[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showHelp, setShowHelp] = useState(true); 
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (isLoading) return;
+
     const value = e.target.value;
 
+    if (
+      (e.nativeEvent as InputEvent).inputType === "deleteContentBackward" &&
+      selectedCourse &&
+      value === `/${selectedCourse}`
+    ) {
+      setPrompt("");
+      setSelectedCourse(null);
+      setIsDropdownVisible(false);
+      return;
+    }
+
     if (value.startsWith("/")) {
-      const query = value.slice(1);
-      setFilteredOptions(
-        options.filter((option) => option.startsWith(query))
-      );
-      setIsDropdownVisible(true);
+      const query = value.slice(1).trim();
+      const filtered = options.filter((option) => option.startsWith(query));
+      setFilteredOptions(filtered);
+      setIsDropdownVisible(filtered.length > 0);
+
+      if (filtered.includes(query)) {
+        setSelectedCourse(query);
+      }
     } else {
       setIsDropdownVisible(false);
     }
+
     setPrompt(value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.key === "Enter" || e.key === " ") && filteredOptions.length === 1) {
+      e.preventDefault();
+      handleOptionSelect(filteredOptions[0]);
+    }
   };
 
   const handleOptionSelect = (option: string) => {
     setPrompt(`/${option} `);
-    setSelectedOptions([`/${option}`]);
+    setSelectedCourse(option);
     setIsDropdownVisible(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (isDropdownVisible && filteredOptions.length === 1 && e.key === "Enter") {
-      e.preventDefault();
-      handleOptionSelect(filteredOptions[0]);
-    } else if (e.key === "Backspace") {
-      if (prompt.startsWith("/") && selectedOptions.includes(prompt.trim())) {
-        setSelectedOptions([]);
-        setPrompt("");
-      }
-    } else if (e.key === "Enter" && prompt.trim()) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
+  const handleSubmit = async () => {
+    if (!prompt.trim() || !selectedCourse || prompt.trim() === `/${selectedCourse}`) return;
 
-  const handleSubmit = () => {
-    if (prompt.trim() && selectedOptions.length) {
-      setSubmittedPrompts((prev) => [...prev, prompt]);
-      setPrompt("");
-      setSelectedOptions([]);
+    setPrompt("");
+    setIsLoading(true);
+
+    setChatHistory((prev) => [
+      ...prev,
+      { user: `/${selectedCourse} ${prompt.trim().slice(selectedCourse.length + 1)}`, bot: null },
+    ]);
+
+    try {
+      const response = await fetch("http://127.0.0.1:8000/submit-prompt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt.trim(),
+          course: selectedCourse,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Error:", await response.json());
+        setChatHistory((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1].bot = "Unable to connect to Gemini, please try again later.";
+          return updated;
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      setChatHistory((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1].bot = data.response;
+        return updated;
+      });
+    } catch (error) {
+      console.error("Error submitting prompt:", error);
+      setChatHistory((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1].bot = "Unable to connect to Gemini, please try again later.";
+        return updated;
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -70,19 +129,54 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-800 text-white flex flex-col items-center p-6">
-      <div className="relative w-full max-w-lg mb-6">
+    <div className="min-h-screen bg-gray-800 text-white flex flex-col justify-between">
+      <Header link="help" linkText="Help" />
+      {showHelp && (
+        <div className="p-4 bg-gray-700 text-white">
+          <HelpText />
+          <button
+            onClick={() => setShowHelp(false)}
+            className="mt-2 text-sm text-blue-500 hover:underline"
+          >
+            Close Help
+          </button>
+        </div>
+      )}
+      <div className="flex-grow p-6 space-y-4 overflow-y-auto">
+        {chatHistory.map((chat, index) => (
+          <div key={index} className="flex flex-col space-y-2">
+            <div className="self-end bg-blue-500 text-white px-4 py-2 rounded-lg max-w-sm">
+              {chat.user}
+            </div>
+            <div className="self-start bg-gray-700 text-white px-4 py-2 rounded-lg max-w-sm">
+              {chat.bot || (isLoading && index === chatHistory.length - 1 && (
+                <div className="flex items-center space-x-1">
+                  <span>Loading model response</span>
+                  <span className="loading-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="relative w-full p-6 bg-gray-900">
         <textarea
           value={prompt}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          className="w-full h-32 p-4 bg-gray-900 text-white border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Type your prompt here..."
+          disabled={isLoading}
+          className="w-full h-16 p-4 bg-gray-700 text-white border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Type your prompt here (e.g., /205 Explain this...) Note: When the model is responding to a prompt, this field is disabled."
         />
-        {isDropdownVisible && filteredOptions.length > 0 && (
+        {isDropdownVisible && (
           <div
             ref={dropdownRef}
-            className="absolute top-full left-0 w-full bg-gray-700 text-white border border-gray-600 rounded-lg shadow-lg mt-2 max-h-40 overflow-y-auto"
+            className="absolute bottom-20 left-6 w-full bg-gray-700 text-white border border-gray-600 rounded-lg shadow-lg max-h-40 overflow-y-auto"
           >
             {filteredOptions.map((option) => (
               <div
@@ -95,25 +189,15 @@ const Home = () => {
             ))}
           </div>
         )}
-      </div>
-      <button
-        onClick={handleSubmit}
-        disabled={!prompt.trim() || selectedOptions.length === 0}
-        className={`px-6 py-2 rounded-lg ${
-          prompt.trim() && selectedOptions.length
-            ? "bg-blue-500 hover:bg-blue-600"
-            : "bg-gray-600 cursor-not-allowed"
-        }`}
-      >
-        Submit
-      </button>
-      <div className="mt-6 w-full max-w-lg">
-        <h3 className="text-lg font-semibold mb-2">Submitted Prompts:</h3>
-        {submittedPrompts.map((submittedPrompt, index) => (
-          <p key={index} className="bg-gray-700 p-2 rounded-lg mb-2">
-            {submittedPrompt}
-          </p>
-        ))}
+        <button
+          onClick={handleSubmit}
+          disabled={
+            !prompt.trim() || !selectedCourse || isLoading || prompt.trim() === `/${selectedCourse}`
+          }
+          className="mt-4 w-full py-2 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600"
+        >
+          Submit
+        </button>
       </div>
     </div>
   );

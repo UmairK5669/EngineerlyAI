@@ -1,7 +1,7 @@
 const HelpText = () => {
     return (
         <div>
-            <p className="mb-2">Welcome to EngineerlyAI! Here's how to use the app:</p>
+            <p className="mb-2">Welcome to EngineerlyAI! Here&aposs how to use the app:</p>
             <ol className="list-decimal list-inside space-y-2">
                 <li>
                     Start your prompt by typing <code>/COURSE</code>. For example, <code>/205 Explain...</code>.

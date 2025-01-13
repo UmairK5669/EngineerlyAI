@@ -1,6 +1,6 @@
 import Image from "next/image";
 
-interface HeaderProps {
+interface HeaderProps { 
     link: string;
     linkText: string;
 }

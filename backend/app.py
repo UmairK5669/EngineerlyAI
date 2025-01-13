@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 import threading
+import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
@@ -11,18 +12,20 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all origins
 
 # Load environment variables
-dotenv.load_dotenv(os.getcwd() + "/.env")
+dotenv.load_dotenv()
 
 # API key and textbook paths
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+BACKEND_API_KEY = os.getenv("BACKEND_API_KEY")  
 TEXTBOOKS = {
-    "205": "textbooks/textbook_205.pdf",
+    "205": "/Users/umair/help-bot/backend/textbooks/textbook_205.pdf",
 }
 
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Store uploaded file IDs
 uploaded_textbooks = {}
+
 
 def upload_textbooks():
     """
@@ -37,6 +40,7 @@ def upload_textbooks():
         except Exception as e:
             print(f"Failed to upload textbook for course {course}: {e}")
 
+
 # Schedule textbook uploads every 1.5 days
 def schedule_uploads():
     scheduler = BackgroundScheduler()
@@ -48,6 +52,7 @@ def schedule_uploads():
     scheduler.add_job(upload_textbooks, "interval", days=1.5, next_run_time=next_run_time)
 
     scheduler.start()
+
 
 # Prepare configuration
 generation_config = {
@@ -65,8 +70,14 @@ safety_settings = [
     {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
 ]
 
-@app.route('/submit-prompt', methods=['POST'])
+
+@app.route("/submit-prompt", methods=["POST"])
 def submit_prompt():
+    # Validate API key
+    api_key = request.headers.get("x-api-key")
+    if api_key != BACKEND_API_KEY:
+        return jsonify({"error": "Invalid API key"}), 403
+
     data = request.json
     prompt = data.get("prompt")
     course = data.get("course")
@@ -83,7 +94,7 @@ def submit_prompt():
     return jsonify({"response": response.text, "course": course}), 200
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Initial textbook upload
     upload_textbooks()
     # Schedule uploads

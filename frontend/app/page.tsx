@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
 import { useState, useEffect, useRef } from "react";
 import Header from "./components/Header";
-import HelpText from "./components/HelpText"; 
+import HelpText from "./components/HelpText";
 
 const options = ["205", "222", "240", "204", "250"];
 
@@ -15,8 +15,11 @@ const Home = () => {
     { user: string; bot: string | null }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showHelp, setShowHelp] = useState(true); 
+  const [showHelp, setShowHelp] = useState(true);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+  const BACKEND_API_KEY = process.env.NEXT_PUBLIC_BACKEND_API_KEY;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (isLoading) return;
@@ -75,10 +78,11 @@ const Home = () => {
     ]);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/submit-prompt", {
+      const response = await fetch(`${BACKEND_API_URL}/submit-prompt`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(BACKEND_API_KEY && { "x-api-key": BACKEND_API_KEY }), 
         },
         body: JSON.stringify({
           prompt: prompt.trim(),

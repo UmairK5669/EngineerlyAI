@@ -14,12 +14,22 @@ const Header = ({ link, linkText }: HeaderProps) => {
                 <h1 className="text-xl font-bold">EngineerlyAI</h1>
             </div>
             {/* Help Link */}
-            <a
-                href={`/${link}`}
-                className="underline hover:no-underline"
-            >
-                {linkText}
-            </a>
+            <div className="space-x-4">
+                <a
+                    href="https://github.com/UmairK5669/EngineerlyAI"
+                    className="underline hover:no-underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Repository
+                </a>
+                <a
+                    href={`/${link}`}
+                    className="underline hover:no-underline"
+                >
+                    {linkText}
+                </a>
+            </div>
         </header>
     );
 };

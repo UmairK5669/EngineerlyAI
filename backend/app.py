@@ -1,15 +1,23 @@
 from datetime import datetime
 import os
 import threading
-import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import google.generativeai as genai
 import dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all origins
+
+# Initialize Flask-Limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["10 per hour"],  # Set global rate limit
+)
 
 # Load environment variables
 dotenv.load_dotenv()
@@ -18,7 +26,7 @@ dotenv.load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BACKEND_API_KEY = os.getenv("BACKEND_API_KEY")  
 TEXTBOOKS = {
-    "205": "/Users/umair/help-bot/backend/textbooks/textbook_205.pdf",
+    "205": "textbooks/textbook_205.pdf",
 }
 
 genai.configure(api_key=GEMINI_API_KEY)
@@ -72,6 +80,7 @@ safety_settings = [
 
 
 @app.route("/submit-prompt", methods=["POST"])
+@limiter.limit("10 per hour")  
 def submit_prompt():
     # Validate API key
     api_key = request.headers.get("x-api-key")
@@ -110,4 +119,4 @@ if __name__ == "__main__":
         ),
     )
     # Start Flask app
-    app.run(debug=True, port=8000)
+    app.run(host="0.0.0.0", port=8080)

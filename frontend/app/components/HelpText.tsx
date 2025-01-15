@@ -15,6 +15,9 @@ const HelpText = () => {
                     <strong>Warning:</strong> Model responses take time to come in (2-3 minutes), since the model is fed
                     the course textbook.
                 </p>
+                <p>
+                    <strong>Warning 2:</strong> Please note only 205 is supported at the moment, support for other courses coming soon!
+                </p>
             </div>
         </div>
     );

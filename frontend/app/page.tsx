@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Header from "./components/Header";
 import HelpText from "./components/HelpText";
 
-const options = ["205", "222", "240", "204", "250"];
+const options = ["205"];
 
 const Home = () => {
   const [prompt, setPrompt] = useState("");

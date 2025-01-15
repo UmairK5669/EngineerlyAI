@@ -1,4 +1,4 @@
-'use client';
+'use client'
 
 import { useState, useEffect, useRef } from "react";
 import Header from "./components/Header";
@@ -15,11 +15,28 @@ const Home = () => {
     { user: string; bot: string | null }[]
   >([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showHelp, setShowHelp] = useState(true);
+  const [showHelp, setShowHelp] = useState<boolean>(true); // Default state
+  const [isInitialized, setIsInitialized] = useState(false); // To track initialization
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const BACKEND_API_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
   const BACKEND_API_KEY = process.env.NEXT_PUBLIC_BACKEND_API_KEY;
+
+  useEffect(() => {
+    // Check localStorage on the client side
+    const savedShowHelp = localStorage.getItem("showHelp");
+    if (savedShowHelp !== null) {
+      setShowHelp(JSON.parse(savedShowHelp));
+    }
+    setIsInitialized(true); // Mark initialization as complete
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized) {
+      // Save `showHelp` state to localStorage whenever it changes
+      localStorage.setItem("showHelp", JSON.stringify(showHelp));
+    }
+  }, [showHelp, isInitialized]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (isLoading) return;
@@ -82,7 +99,7 @@ const Home = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(BACKEND_API_KEY && { "x-api-key": BACKEND_API_KEY }), 
+          ...(BACKEND_API_KEY && { "x-api-key": BACKEND_API_KEY }),
         },
         body: JSON.stringify({
           prompt: prompt.trim(),
@@ -132,10 +149,14 @@ const Home = () => {
     };
   }, []);
 
+  if (!isInitialized) {
+    return null; // Render nothing until the state is initialized
+  }
+
   return (
     <div className="min-h-screen bg-gray-800 text-white flex flex-col justify-between">
       <Header link="help" linkText="Help" />
-      {showHelp && (
+      {showHelp ? (
         <div className="p-4 bg-gray-700 text-white">
           <HelpText />
           <button
@@ -145,6 +166,13 @@ const Home = () => {
             Close Help
           </button>
         </div>
+      ) : (
+        <button
+          onClick={() => setShowHelp(true)}
+          className="mt-2 text-sm text-blue-500 hover:underline self-start p-4"
+        >
+          Open Help
+        </button>
       )}
       <div className="flex-grow p-6 space-y-4 overflow-y-auto">
         {chatHistory.map((chat, index) => (

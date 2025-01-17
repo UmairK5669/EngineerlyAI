@@ -1,8 +1,9 @@
-'use client'
+'use client';
 
 import { useState, useEffect, useRef } from "react";
 import Header from "./components/Header";
 import HelpText from "./components/HelpText";
+import RenderMarkdownAndLatex from "./components/RenderMarkdownAndLatex"; 
 
 const options = ["205"];
 
@@ -71,11 +72,22 @@ const Home = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.key === "Enter" || e.key === " ") && filteredOptions.length === 1) {
-      e.preventDefault();
-      handleOptionSelect(filteredOptions[0]);
+    if (isDropdownVisible) {
+      // If dropdown is visible, interact with it
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (filteredOptions.length === 1) {
+          handleOptionSelect(filteredOptions[0]); // Automatically select the single option
+        }
+      }
+    } else {
+      // If dropdown is not visible, submit the prompt
+      if (e.key === "Enter" && !isLoading && prompt.trim() && selectedCourse) {
+        e.preventDefault();
+        handleSubmit();
+      }
     }
-  };
+  };  
 
   const handleOptionSelect = (option: string) => {
     setPrompt(`/${option} `);
@@ -177,20 +189,27 @@ const Home = () => {
       <div className="flex-grow p-6 space-y-4 overflow-y-auto">
         {chatHistory.map((chat, index) => (
           <div key={index} className="flex flex-col space-y-2">
+            {/* Render user input */}
             <div className="self-end bg-blue-500 text-white px-4 py-2 rounded-lg max-w-sm">
               {chat.user}
             </div>
+            {/* Render bot response using RenderMarkdownAndLatex */}
             <div className="self-start bg-gray-700 text-white px-4 py-2 rounded-lg max-w-sm">
-              {chat.bot || (isLoading && index === chatHistory.length - 1 && (
-                <div className="flex items-center space-x-1">
-                  <span>Loading model response</span>
-                  <span className="loading-dots">
-                    <span>.</span>
-                    <span>.</span>
-                    <span>.</span>
-                  </span>
-                </div>
-              ))}
+              {chat.bot ? (
+                <RenderMarkdownAndLatex content={chat.bot} />
+              ) : (
+                isLoading &&
+                index === chatHistory.length - 1 && (
+                  <div className="flex items-center space-x-1">
+                    <span>Loading model response</span>
+                    <span className="loading-dots">
+                      <span>.</span>
+                      <span>.</span>
+                      <span>.</span>
+                    </span>
+                  </div>
+                )
+              )}
             </div>
           </div>
         ))}
